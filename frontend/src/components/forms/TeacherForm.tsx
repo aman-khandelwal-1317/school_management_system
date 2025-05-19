@@ -20,7 +20,7 @@ interface TeacherFormInputs {
   name: string;
   email: string;
   department: string;
-  subjectId: string;
+  subjectIds: string[];
   contact: string;
   status: string;
 }
@@ -41,7 +41,7 @@ const TeacherForm = ({ subjects, onSuccess, onCancel }: TeacherFormProps) => {
       name: '',
       email: '',
       department: '',
-      subjectId: '',
+      subjectIds: [],
       contact: '',
       status: 'active'
     }
@@ -149,19 +149,25 @@ const TeacherForm = ({ subjects, onSuccess, onCancel }: TeacherFormProps) => {
         </div>
         
         <div>
-          <label htmlFor="subjectId" className="block text-sm font-medium text-gray-700 mb-1">Subject*</label>
+          <label htmlFor="subjectIds" className="block text-sm font-medium text-gray-700 mb-1">Subjects*</label>
           <select
-            id="subjectId"
-            {...register("subjectId", { required: "Subject is required" })}
-            className={`w-full border ${errors.subjectId ? 'border-red-500' : 'border-gray-300'} rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+            id="subjectIds"
+            multiple
+            {...register("subjectIds", { 
+              required: "At least one subject is required",
+              validate: value => value.length > 0 || "At least one subject is required"
+            })}
+            className={`w-full border ${errors.subjectIds ? 'border-red-500' : 'border-gray-300'} rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[100px]`}
           >
-            <option value="">Select Subject</option>
             {subjects.map(subject => (
-              <option key={subject._id} value={subject._id}>{subject.name}</option>
+              <option key={subject._id} value={subject._id}>
+                {subject.name} ({subject.subjectCode})
+              </option>
             ))}
           </select>
-          {errors.subjectId && (
-            <p className="mt-1 text-xs text-red-600">{errors.subjectId.message}</p>
+          <p className="mt-1 text-xs text-gray-500">Hold Ctrl/Cmd to select multiple subjects</p>
+          {errors.subjectIds && (
+            <p className="mt-1 text-xs text-red-600">{errors.subjectIds.message}</p>
           )}
         </div>
         

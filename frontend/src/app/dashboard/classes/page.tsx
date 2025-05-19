@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import apiService from '@/services/api';
 import ClassForm from '@/components/forms/ClassForm';
 import Modal from '@/components/ui/Modal';
@@ -23,6 +24,7 @@ interface Class {
   name: string;
   classTeacher: Teacher;
   students: string[];
+  subjects: string[];
   roomNo: string;
   status: string;
   createdAt: string;
@@ -194,7 +196,10 @@ export default function ClassesPage() {
                     Class Teacher
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    No. of Students
+                    Students
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Subjects
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Room No.
@@ -243,6 +248,9 @@ export default function ClassesPage() {
                         <div className="text-sm text-gray-900">{classItem.students?.length || 0}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{classItem.subjects?.length || 0}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{classItem.roomNo}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -252,9 +260,13 @@ export default function ClassesPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
-                          <button className="action-btn view-btn" data-tooltip="View Details">
+                          <Link 
+                            href={`/dashboard/classes/${classItem._id}`}
+                            className="action-btn view-btn" 
+                            data-tooltip="View Details"
+                          >
                             <i className="fas fa-eye"></i>
-                          </button>
+                          </Link>
                           <button className="action-btn edit-btn" data-tooltip="Edit">
                             <i className="fas fa-edit"></i>
                           </button>

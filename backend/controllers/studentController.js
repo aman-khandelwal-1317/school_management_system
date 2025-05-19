@@ -6,7 +6,18 @@ const Class = require('../models/Class');
 // @access  Private/Admin
 exports.createStudent = async (req, res) => {
   try {
-    const { studentId, name, email, classId, gender, phone, status } = req.body;
+    const { 
+      studentId, 
+      name, 
+      email, 
+      classId, 
+      gender, 
+      phone, 
+      status,
+      fatherName,
+      motherName,
+      address
+    } = req.body;
 
     // Check if student with the same ID already exists
     const studentExists = await Student.findOne({ 
@@ -35,7 +46,10 @@ exports.createStudent = async (req, res) => {
       class: classId,
       gender,
       phone,
-      status: status || 'active'
+      status: status || 'active',
+      fatherName,
+      motherName,
+      address
     });
 
     if (newStudent) {
@@ -56,6 +70,36 @@ exports.createStudent = async (req, res) => {
   } catch (error) {
     console.error('Error in createStudent:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// @desc    Get student by ID
+// @route   GET /api/students/:id
+// @access  Private/Admin
+exports.getStudentById = async (req, res) => {
+  try {
+    const student = await Student.findById(req.params.id)
+      .populate('class', 'name classId')
+      .select('-__v');
+
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: student
+    });
+  } catch (error) {
+    console.error('Error in getStudentById:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
   }
 };
 

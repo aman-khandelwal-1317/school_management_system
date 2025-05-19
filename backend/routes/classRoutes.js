@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { addClass, getAllClasses, deleteClass } = require('../controllers/classController');
+const { addClass, getAllClasses, deleteClass, getClassById } = require('../controllers/classController');
 const { protect, admin } = require('../middlewares/authMiddleware');
 
 // Class routes
@@ -11,6 +11,7 @@ router.route('/')
 
 // Route for specific class by ID
 router.route('/:id')
+  .get(protect, admin, getClassById)
   .delete(protect, admin, deleteClass);
 
 module.exports = router;

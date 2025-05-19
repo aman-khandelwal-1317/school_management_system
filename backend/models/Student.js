@@ -20,6 +20,21 @@ const StudentSchema = new mongoose.Schema({
     lowercase: true,
     match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please provide a valid email']
   },
+  fatherName: {
+    type: String,
+    required: [true, "Father's name is required"],
+    trim: true
+  },
+  motherName: {
+    type: String,
+    required: [true, "Mother's name is required"],
+    trim: true
+  },
+  address: {
+    type: String,
+    required: [true, 'Address is required'],
+    trim: true
+  },
   class: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Class',

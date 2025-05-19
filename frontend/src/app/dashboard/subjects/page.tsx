@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import apiService from '@/services/api';
 import SubjectForm from '@/components/forms/SubjectForm';
 import Modal from '@/components/ui/Modal';
@@ -316,9 +317,14 @@ export default function SubjectsPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
-                          <button className="action-btn view-btn" data-tooltip="View Details">
+                          <Link 
+                            href={`/dashboard/subjects/${subject._id}`}
+                            className="action-btn view-btn" 
+                            data-tooltip="View Details"
+                            title="View Details"
+                          >
                             <i className="fas fa-eye"></i>
-                          </button>
+                          </Link>
                           <button className="action-btn edit-btn" data-tooltip="Edit">
                             <i className="fas fa-edit"></i>
                           </button>

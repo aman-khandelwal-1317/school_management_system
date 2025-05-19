@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { addSubject, getAllSubjects, deleteSubject } = require('../controllers/subjectController');
+const { addSubject, getAllSubjects, deleteSubject, getSubjectById } = require('../controllers/subjectController');
 const { protect, admin } = require('../middlewares/authMiddleware');
 
 // Subject routes
@@ -11,6 +11,7 @@ router.route('/')
 
 // Route for specific subject by ID
 router.route('/:id')
+  .get(protect, admin, getSubjectById)
   .delete(protect, admin, deleteSubject);
 
 module.exports = router;

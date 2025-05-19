@@ -17,11 +17,11 @@ const TeacherSchema = new mongoose.Schema({
     required: [true, 'Department is required'],
     trim: true
   },
-  subject: {
+  subjects: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Subject',
-    required: [true, 'Subject is required']
-  },
+    required: [true, 'At least one subject is required']
+  }],
   contact: {
     type: String,
     required: [true, 'Contact information is required'],

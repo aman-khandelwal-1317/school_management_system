@@ -22,6 +22,9 @@ interface StudentFormInputs {
   gender: string;
   phone: string;
   status: string;
+  fatherName: string;
+  motherName: string;
+  address: string;
 }
 
 const StudentForm = ({ classes, onSuccess, onCancel }: StudentFormProps) => {
@@ -43,7 +46,10 @@ const StudentForm = ({ classes, onSuccess, onCancel }: StudentFormProps) => {
       classId: '',
       gender: '',
       phone: '',
-      status: 'active'
+      status: 'active',
+      fatherName: '',
+      motherName: '',
+      address: ''
     }
   });
   
@@ -186,6 +192,46 @@ const StudentForm = ({ classes, onSuccess, onCancel }: StudentFormProps) => {
           />
           {errors.phone && (
             <p className="mt-1 text-xs text-red-600">{errors.phone.message}</p>
+          )}
+        </div>
+        
+        <div>
+          <label htmlFor="fatherName" className="block text-sm font-medium text-gray-700 mb-1">Father's Name*</label>
+          <input
+            id="fatherName"
+            {...register("fatherName", { required: "Father's name is required" })}
+            className={`w-full border ${errors.fatherName ? 'border-red-500' : 'border-gray-300'} rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+            placeholder="Father's full name"
+          />
+          {errors.fatherName && (
+            <p className="mt-1 text-xs text-red-600">{errors.fatherName.message}</p>
+          )}
+        </div>
+        
+        <div>
+          <label htmlFor="motherName" className="block text-sm font-medium text-gray-700 mb-1">Mother's Name*</label>
+          <input
+            id="motherName"
+            {...register("motherName", { required: "Mother's name is required" })}
+            className={`w-full border ${errors.motherName ? 'border-red-500' : 'border-gray-300'} rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+            placeholder="Mother's full name"
+          />
+          {errors.motherName && (
+            <p className="mt-1 text-xs text-red-600">{errors.motherName.message}</p>
+          )}
+        </div>
+        
+        <div className="col-span-2">
+          <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">Address*</label>
+          <textarea
+            id="address"
+            rows={3}
+            {...register("address", { required: "Address is required" })}
+            className={`w-full border ${errors.address ? 'border-red-500' : 'border-gray-300'} rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+            placeholder="Full address"
+          />
+          {errors.address && (
+            <p className="mt-1 text-xs text-red-600">{errors.address.message}</p>
           )}
         </div>
         

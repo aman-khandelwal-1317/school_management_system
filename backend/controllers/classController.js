@@ -47,6 +47,49 @@ exports.addClass = async (req, res) => {
   }
 };
 
+// @desc    Get class by ID
+// @route   GET /api/classes/:id
+// @access  Private/Admin
+exports.getClassById = async (req, res) => {
+  try {
+    const classData = await Class.findById(req.params.id)
+      .populate({
+        path: 'classTeacher',
+        select: 'name teacherId email'
+      })
+      .populate({
+        path: 'students',
+        select: 'studentId name email phone status',
+        options: { sort: { name: 1 } }
+      })
+      .populate({
+        path: 'subjects',
+        select: 'subjectCode name type status',
+        options: { sort: { name: 1 } }
+      })
+      .select('-__v');
+
+    if (!classData) {
+      return res.status(404).json({
+        success: false,
+        message: 'Class not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: classData
+    });
+  } catch (error) {
+    console.error('Error in getClassById:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+};
+
 // @desc    Get all classes
 // @route   GET /api/classes
 // @access  Private/Admin

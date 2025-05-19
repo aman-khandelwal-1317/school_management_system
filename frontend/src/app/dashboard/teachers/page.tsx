@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import apiService from '@/services/api';
 import TeacherForm from '@/components/forms/TeacherForm';
 import Modal from '@/components/ui/Modal';
@@ -17,7 +18,7 @@ interface Teacher {
   teacherId: string;
   name: string;
   department: string;
-  subject: Subject;
+  subjects: Subject[];
   contact: string;
   status: 'active' | 'inactive';
   email: string;
@@ -256,7 +257,7 @@ export default function TeachersPage() {
                     Department
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Subject
+                    Subjects
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Contact
@@ -302,8 +303,18 @@ export default function TeachersPage() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{teacher.department}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{teacher.subject?.name || 'Not Assigned'}</div>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-wrap gap-1">
+                          {teacher.subjects?.length > 0 ? (
+                            teacher.subjects.map((subject, index) => (
+                              <span key={subject._id} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                                {subject.name}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-sm text-gray-500">No subjects assigned</span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{teacher.contact}</div>
@@ -315,9 +326,14 @@ export default function TeachersPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
-                          <button className="action-btn view-btn" data-tooltip="View Details">
+                          <Link 
+                            href={`/dashboard/teachers/${teacher._id}`}
+                            className="action-btn view-btn" 
+                            data-tooltip="View Details"
+                            title="View Details"
+                          >
                             <i className="fas fa-eye"></i>
-                          </button>
+                          </Link>
                           <button className="action-btn edit-btn" data-tooltip="Edit">
                             <i className="fas fa-edit"></i>
                           </button>

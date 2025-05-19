@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import apiService from '@/services/api';
 import StudentForm from '@/components/forms/StudentForm';
 import Modal from '@/components/ui/Modal';
@@ -225,9 +227,13 @@ export default function StudentsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
-                        <button className="action-btn view-btn" data-tooltip="View Details">
+                        <Link 
+                          href={`/dashboard/students/${student._id}`}
+                          className="action-btn view-btn"
+                          data-tooltip="View Details"
+                        >
                           <i className="fas fa-eye"></i>
-                        </button>
+                        </Link>
                         <button className="action-btn edit-btn" data-tooltip="Edit">
                           <i className="fas fa-edit"></i>
                         </button>

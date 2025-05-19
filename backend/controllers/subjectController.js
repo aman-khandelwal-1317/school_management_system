@@ -34,9 +34,21 @@ exports.addSubject = async (req, res) => {
     });
 
     if (newSubject) {
+      // Add the subject to the class's subjects array
+      await Class.findByIdAndUpdate(
+        classId,
+        { $addToSet: { subjects: newSubject._id } },
+        { new: true }
+      );
+
+      // Populate the class and teacher in the response
+      const populatedSubject = await Subject.findById(newSubject._id)
+        .populate('class', 'name classId')
+        .populate('teacher', 'name teacherId');
+
       res.status(201).json({
         success: true,
-        data: newSubject
+        data: populatedSubject
       });
     } else {
       res.status(400).json({ message: 'Invalid subject data' });
@@ -47,6 +59,43 @@ exports.addSubject = async (req, res) => {
   }
 };
 
+// @desc    Get subject by ID
+// @route   GET /api/subjects/:id
+// @access  Private/Admin
+exports.getSubjectById = async (req, res) => {
+  try {
+    const subject = await Subject.findById(req.params.id)
+      .populate({
+        path: 'class',
+        select: 'name classId academicYear'
+      })
+      .populate({
+        path: 'teacher',
+        select: 'name teacherId email contact'
+      })
+      .select('-__v');
+
+    if (!subject) {
+      return res.status(404).json({
+        success: false,
+        message: 'Subject not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: subject
+    });
+  } catch (error) {
+    console.error('Error in getSubjectById:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+};
+
 // @desc    Get all subjects
 // @route   GET /api/subjects
 // @access  Private/Admin
@@ -54,6 +103,7 @@ exports.getAllSubjects = async (req, res) => {
   try {
     const subjects = await Subject.find({})
       .populate('class', 'name classId')
+      .populate('teacher', 'name teacherId')
       .sort({ createdAt: -1 });
     
     res.status(200).json({

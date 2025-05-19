@@ -1,6 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { createTeacher, getAllTeachers, deleteTeacher, getTeacherById } = require('../controllers/teacherController');
+const { 
+  createTeacher, 
+  getAllTeachers, 
+  deleteTeacher, 
+  getTeacherById,
+  updateTeacher 
+} = require('../controllers/teacherController');
 const { protect, admin } = require('../middlewares/authMiddleware');
 
 // Teacher routes
@@ -12,6 +18,7 @@ router.route('/')
 // Route for specific teacher by ID
 router.route('/:id')
   .get(protect, admin, getTeacherById)
+  .put(protect, admin, updateTeacher)
   .delete(protect, admin, deleteTeacher);
 
 module.exports = router;

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import apiService from '@/services/api';
 import StudentForm from '@/components/forms/StudentForm';
+import EditStudentForm from '@/components/forms/EditStudentForm';
 import Modal from '@/components/ui/Modal';
 
 interface Class {
@@ -23,6 +24,9 @@ interface Student {
   gender: string;
   phone: string;
   status: string;
+  fatherName?: string;
+  motherName?: string;
+  address?: string;
   createdAt: string;
 }
 
@@ -32,7 +36,9 @@ export default function StudentsPage() {
   const [classes, setClasses] = useState<Class[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [filters, setFilters] = useState({
     search: '',
     class: '',
@@ -156,18 +162,33 @@ export default function StudentsPage() {
     fetchData();
   }, []);
 
-  const handleFormSuccess = async () => {
-    // Refresh students list after successful form submission
+  // Handle form success
+  const handleSuccess = async () => {
     try {
       const response = await apiService.students.getAll();
       if (response.success && response.data) {
         setStudents(response.data);
         setFilteredStudents(response.data);
       }
-      setIsModalOpen(false);
+      setIsAddModalOpen(false);
+      setIsEditModalOpen(false);
+      setSelectedStudent(null);
     } catch (err) {
       console.error('Error refreshing students:', err);
     }
+  };
+
+  // Handle form cancel
+  const handleCancel = () => {
+    setIsAddModalOpen(false);
+    setIsEditModalOpen(false);
+    setSelectedStudent(null);
+  };
+
+  // Handle edit student
+  const handleEditStudent = (student: Student) => {
+    setSelectedStudent(student);
+    setIsEditModalOpen(true);
   };
 
   return (
@@ -176,7 +197,7 @@ export default function StudentsPage() {
         <h1 className="text-2xl font-semibold text-gray-800">Student Management</h1>
         <button 
           className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg flex items-center"
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => setIsAddModalOpen(true)}
         >
           <i className="fas fa-plus mr-2"></i> Add New Student
         </button>
@@ -258,15 +279,31 @@ export default function StudentsPage() {
       
       {/* Add Student Modal */}
       <Modal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
+        isOpen={isAddModalOpen} 
+        onClose={handleCancel} 
         title="Add New Student"
       >
         <StudentForm 
           classes={classes} 
-          onSuccess={handleFormSuccess} 
-          onCancel={() => setIsModalOpen(false)} 
+          onSuccess={handleSuccess} 
+          onCancel={handleCancel} 
         />
+      </Modal>
+
+      {/* Edit Student Modal */}
+      <Modal 
+        isOpen={isEditModalOpen} 
+        onClose={handleCancel} 
+        title="Edit Student"
+      >
+        {selectedStudent && (
+          <EditStudentForm 
+            student={selectedStudent}
+            classes={classes}
+            onSuccess={handleSuccess}
+            onCancel={handleCancel}
+          />
+        )}
       </Modal>
 
       {/* Students Table */}
@@ -369,7 +406,14 @@ export default function StudentsPage() {
                         >
                           <i className="fas fa-eye"></i>
                         </Link>
-                        <button className="action-btn edit-btn" data-tooltip="Edit">
+                        <button 
+                          className="text-blue-600 hover:text-blue-900 mr-3"
+                          title="Edit"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditStudent(student);
+                          }}
+                        >
                           <i className="fas fa-edit"></i>
                         </button>
                         <button className="action-btn delete-btn" data-tooltip="Delete">

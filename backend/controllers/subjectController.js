@@ -59,6 +59,131 @@ exports.addSubject = async (req, res) => {
   }
 };
 
+// @desc    Update a subject
+// @route   PUT /api/subjects/:id
+// @access  Private/Admin
+exports.updateSubject = async (req, res) => {
+  try {
+    const { name, department, type, classId, status, teacherId } = req.body;
+    const subjectId = req.params.id;
+
+    // Find the subject
+    const subject = await Subject.findById(subjectId);
+    if (!subject) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Subject not found' 
+      });
+    }
+
+    // Check if class is being changed and if the new class exists
+    if (classId && classId !== subject.class?.toString()) {
+      const classExists = await Class.findById(classId);
+      if (!classExists) {
+        return res.status(404).json({
+          success: false,
+          message: 'Class not found'
+        });
+      }
+    }
+
+    // Check if teacher is being assigned and if the teacher exists
+    if (teacherId && teacherId !== subject.teacher?.toString()) {
+      const teacherExists = await Teacher.findById(teacherId);
+      if (!teacherExists) {
+        return res.status(404).json({
+          success: false,
+          message: 'Teacher not found'
+        });
+      }
+    }
+
+    // Prepare update data
+    const updateData = {
+      name: name || subject.name,
+      department: department || subject.department,
+      type: type || subject.type,
+      status: status || subject.status
+    };
+
+    // Handle class change if needed
+    if (classId && classId !== subject.class?.toString()) {
+      // Remove from old class's subjects array
+      await Class.findByIdAndUpdate(
+        subject.class,
+        { $pull: { subjects: subjectId } },
+        { new: true }
+      );
+
+      // Add to new class's subjects array
+      await Class.findByIdAndUpdate(
+        classId,
+        { $addToSet: { subjects: subjectId } },
+        { new: true }
+      );
+
+      updateData.class = classId;
+    }
+
+    // Handle teacher assignment if needed
+    if (teacherId !== undefined) {
+      const oldTeacherId = subject.teacher?.toString();
+      const newTeacherId = teacherId || null;
+      
+      // If teacher is being changed
+      if (newTeacherId !== oldTeacherId) {
+        // Remove from old teacher's subjects array if exists
+        if (oldTeacherId) {
+          await Teacher.findByIdAndUpdate(
+            oldTeacherId,
+            { $pull: { subjects: subjectId } },
+            { new: true }
+          );
+        }
+        
+        // Add to new teacher's subjects array if exists
+        if (newTeacherId) {
+          await Teacher.findByIdAndUpdate(
+            newTeacherId,
+            { $addToSet: { subjects: subjectId } },
+            { new: true }
+          );
+        }
+      }
+      
+      updateData.teacher = newTeacherId;
+    }
+
+    // Update the subject
+    const updatedSubject = await Subject.findByIdAndUpdate(
+      subjectId,
+      updateData,
+      { new: true, runValidators: true }
+    )
+    .populate({
+      path: 'class',
+      select: 'name classId academicYear'
+    })
+    .populate({
+      path: 'teacher',
+      select: 'name teacherId email contact'
+    })
+    .select('-__v');
+
+    res.status(200).json({
+      success: true,
+      data: updatedSubject
+    });
+  } catch (error) {
+    console.error('Error in updateSubject:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+};
+
 // @desc    Get subject by ID
 // @route   GET /api/subjects/:id
 // @access  Private/Admin

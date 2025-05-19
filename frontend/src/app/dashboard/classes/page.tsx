@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import apiService from '@/services/api';
 import ClassForm from '@/components/forms/ClassForm';
+import EditClassForm from '@/components/forms/EditClassForm';
 import Modal from '@/components/ui/Modal';
 
 interface Teacher {
@@ -35,7 +36,9 @@ export default function ClassesPage() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [selectedClass, setSelectedClass] = useState<Class | null>(null);
   const [stats, setStats] = useState({
     totalClasses: 0,
     avgStudents: 0,
@@ -82,7 +85,7 @@ export default function ClassesPage() {
     fetchData();
   }, []);
   
-  const handleFormSuccess = async () => {
+  const handleSuccess = async () => {
     // Refresh classes list after successful form submission
     try {
       const response = await apiService.classes.getAll();
@@ -100,10 +103,23 @@ export default function ClassesPage() {
           activeClassrooms: activeClasses
         });
       }
-      setIsModalOpen(false);
+      setIsAddModalOpen(false);
+      setIsEditModalOpen(false);
+      setSelectedClass(null);
     } catch (err) {
       console.error('Error refreshing classes:', err);
     }
+  };
+
+  const handleCancel = () => {
+    setIsAddModalOpen(false);
+    setIsEditModalOpen(false);
+    setSelectedClass(null);
+  };
+
+  const handleEditClass = (classItem: Class) => {
+    setSelectedClass(classItem);
+    setIsEditModalOpen(true);
   };
   return (
     <>
@@ -111,7 +127,7 @@ export default function ClassesPage() {
         <h1 className="text-2xl font-semibold text-gray-800">Class Management</h1>
         <button 
           className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg flex items-center"
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => setIsAddModalOpen(true)}
         >
           <i className="fas fa-plus mr-2"></i> Add New Class
         </button>
@@ -158,15 +174,31 @@ export default function ClassesPage() {
       
       {/* Add Class Modal */}
       <Modal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
+        isOpen={isAddModalOpen} 
+        onClose={handleCancel} 
         title="Add New Class"
       >
         <ClassForm 
           teachers={teachers} 
-          onSuccess={handleFormSuccess} 
-          onCancel={() => setIsModalOpen(false)} 
+          onSuccess={handleSuccess} 
+          onCancel={handleCancel} 
         />
+      </Modal>
+
+      {/* Edit Class Modal */}
+      <Modal 
+        isOpen={isEditModalOpen} 
+        onClose={handleCancel} 
+        title="Edit Class"
+      >
+        {selectedClass && (
+          <EditClassForm 
+            classData={selectedClass}
+            teachers={teachers}
+            onSuccess={handleSuccess}
+            onCancel={handleCancel}
+          />
+        )}
       </Modal>
       
       {/* Classes Table */}
@@ -267,7 +299,14 @@ export default function ClassesPage() {
                           >
                             <i className="fas fa-eye"></i>
                           </Link>
-                          <button className="action-btn edit-btn" data-tooltip="Edit">
+                          <button 
+                            className="text-blue-600 hover:text-blue-900 mr-3"
+                            title="Edit"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditClass(classItem);
+                            }}
+                          >
                             <i className="fas fa-edit"></i>
                           </button>
                           <button className="action-btn delete-btn" data-tooltip="Delete">

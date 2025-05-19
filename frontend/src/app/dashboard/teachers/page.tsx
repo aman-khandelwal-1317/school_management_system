@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import apiService from '@/services/api';
 import TeacherForm from '@/components/forms/TeacherForm';
+import EditTeacherForm from '@/components/forms/EditTeacherForm';
 import Modal from '@/components/ui/Modal';
 
 interface Subject {
@@ -48,7 +49,9 @@ export default function TeachersPage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
   // Extract unique departments from teachers data
   const [departments, setDepartments] = useState<string[]>(['All Departments']);
   const [filters, setFilters] = useState({
@@ -198,7 +201,7 @@ export default function TeachersPage() {
     fetchData();
   }, []);
   
-  const handleFormSuccess = async () => {
+  const handleSuccess = async () => {
     // Refresh teachers list after successful form submission
     try {
       const response = await apiService.teachers.getAll();
@@ -228,18 +231,32 @@ export default function TeachersPage() {
         // Reapply filters with the new data
         applyFilters();
       }
-      setIsModalOpen(false);
+      setIsAddModalOpen(false);
+      setIsEditModalOpen(false);
+      setSelectedTeacher(null);
     } catch (err) {
       console.error('Error refreshing teachers:', err);
     }
   };
+
+  const handleCancel = () => {
+    setIsAddModalOpen(false);
+    setIsEditModalOpen(false);
+    setSelectedTeacher(null);
+  };
+
+  const handleEditTeacher = (teacher: Teacher) => {
+    setSelectedTeacher(teacher);
+    setIsEditModalOpen(true);
+  };
+
   return (
     <>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold text-gray-800">Teacher Management</h1>
         <button 
           className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg flex items-center"
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => setIsAddModalOpen(true)}
         >
           <i className="fas fa-plus mr-2"></i> Add New Teacher
         </button>
@@ -372,15 +389,31 @@ export default function TeachersPage() {
       
       {/* Add Teacher Modal */}
       <Modal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
+        isOpen={isAddModalOpen} 
+        onClose={handleCancel} 
         title="Add New Teacher"
       >
         <TeacherForm 
           subjects={subjects} 
-          onSuccess={handleFormSuccess} 
-          onCancel={() => setIsModalOpen(false)} 
+          onSuccess={handleSuccess} 
+          onCancel={handleCancel} 
         />
+      </Modal>
+
+      {/* Edit Teacher Modal */}
+      <Modal 
+        isOpen={isEditModalOpen} 
+        onClose={handleCancel} 
+        title="Edit Teacher"
+      >
+        {selectedTeacher && (
+          <EditTeacherForm 
+            teacher={selectedTeacher}
+            subjects={subjects}
+            onSuccess={handleSuccess}
+            onCancel={handleCancel}
+          />
+        )}
       </Modal>
       
       {/* Teachers Table */}
@@ -489,7 +522,14 @@ export default function TeachersPage() {
                           >
                             <i className="fas fa-eye"></i>
                           </Link>
-                          <button className="action-btn edit-btn" data-tooltip="Edit">
+                          <button 
+                            className="text-blue-600 hover:text-blue-900 mr-3"
+                            title="Edit"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditTeacher(teacher);
+                            }}
+                          >
                             <i className="fas fa-edit"></i>
                           </button>
                           <button className="action-btn delete-btn" data-tooltip="Delete">

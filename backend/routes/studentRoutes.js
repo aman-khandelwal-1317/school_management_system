@@ -1,6 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { createStudent, getAllStudents, deleteStudent, getStudentById } = require('../controllers/studentController');
+const { 
+  createStudent, 
+  getAllStudents, 
+  deleteStudent, 
+  getStudentById,
+  updateStudent 
+} = require('../controllers/studentController');
 const { protect, admin } = require('../middlewares/authMiddleware');
 
 // Student routes
@@ -12,6 +18,7 @@ router.route('/')
 // Route for specific student by ID
 router.route('/:id')
   .get(protect, admin, getStudentById)
+  .put(protect, admin, updateStudent)
   .delete(protect, admin, deleteStudent);
 
 module.exports = router;

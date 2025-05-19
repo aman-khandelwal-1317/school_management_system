@@ -5,11 +5,14 @@ import Image from 'next/image';
 import Link from 'next/link';
 import apiService from '@/services/api';
 import SubjectForm from '@/components/forms/SubjectForm';
+import EditSubjectForm from '@/components/forms/EditSubjectForm';
 import Modal from '@/components/ui/Modal';
 
 interface Teacher {
   _id: string;
   name: string;
+  teacherId: string;
+  department: string;
 }
 
 interface Class {
@@ -34,10 +37,13 @@ export default function SubjectsPage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [filteredSubjects, setFilteredSubjects] = useState<Subject[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [uniqueDepartments, setUniqueDepartments] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [filters, setFilters] = useState({
     search: '',
     department: 'All Departments',
@@ -144,14 +150,20 @@ export default function SubjectsPage() {
   useEffect(() => {
     applyFilters();
   }, [applyFilters, debouncedSearch]);
-  
+
+  // Fetch data on component mount
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         
         // Fetch subjects
-        const subjectsResponse = await apiService.subjects.getAll();
+        const [subjectsResponse, classesResponse, teachersResponse] = await Promise.all([
+          apiService.subjects.getAll(),
+          apiService.classes.getAll(),
+          apiService.teachers.getAll()
+        ]);
+        
         if (subjectsResponse.success && subjectsResponse.data) {
           setSubjects(subjectsResponse.data);
           setFilteredSubjects(subjectsResponse.data);
@@ -182,10 +194,14 @@ export default function SubjectsPage() {
           setError(subjectsResponse.error || subjectsResponse.message || 'Failed to fetch subjects');
         }
         
-        // Fetch classes for the class dropdown
-        const classesResponse = await apiService.classes.getAll();
+        // Set classes if response is successful
         if (classesResponse.success && classesResponse.data) {
           setClasses(classesResponse.data);
+        }
+        
+        // Set teachers if response is successful
+        if (teachersResponse.success && teachersResponse.data) {
+          setTeachers(teachersResponse.data);
         }
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -198,7 +214,7 @@ export default function SubjectsPage() {
     fetchData();
   }, []);
   
-  const handleFormSuccess = async () => {
+  const handleSuccess = async () => {
     // Refresh subjects list after successful form submission
     try {
       const response = await apiService.subjects.getAll();
@@ -216,18 +232,32 @@ export default function SubjectsPage() {
           avgStudentsPerSubject: stats.avgStudentsPerSubject // Keep the existing value
         });
       }
-      setIsModalOpen(false);
+      setIsAddModalOpen(false);
+      setIsEditModalOpen(false);
+      setSelectedSubject(null);
     } catch (err) {
       console.error('Error refreshing subjects:', err);
     }
   };
+
+  const handleCancel = () => {
+    setIsAddModalOpen(false);
+    setIsEditModalOpen(false);
+    setSelectedSubject(null);
+  };
+
+  const handleEditSubject = (subject: Subject) => {
+    setSelectedSubject(subject);
+    setIsEditModalOpen(true);
+  };
+
   return (
     <>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold text-gray-800">Subject Management</h1>
         <button 
           className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg flex items-center"
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => setIsAddModalOpen(true)}
         >
           <i className="fas fa-plus mr-2"></i> Add New Subject
         </button>
@@ -379,15 +409,34 @@ export default function SubjectsPage() {
       
       {/* Add Subject Modal */}
       <Modal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
+        isOpen={isAddModalOpen} 
+        onClose={handleCancel} 
         title="Add New Subject"
       >
         <SubjectForm 
           classes={classes} 
-          onSuccess={handleFormSuccess} 
-          onCancel={() => setIsModalOpen(false)} 
+          onSuccess={handleSuccess} 
+          onCancel={handleCancel} 
         />
+      </Modal>
+
+      {/* Edit Subject Modal */}
+      <Modal 
+        isOpen={isEditModalOpen} 
+        onClose={handleCancel} 
+        title="Edit Subject"
+      >
+        {selectedSubject && (
+          <EditSubjectForm 
+            subject={{
+              ...selectedSubject,
+              teachers: teachers
+            }}
+            classes={classes}
+            onSuccess={handleSuccess}
+            onCancel={handleCancel}
+          />
+        )}
       </Modal>
       
       {/* Subjects Table */}
@@ -491,7 +540,14 @@ export default function SubjectsPage() {
                           >
                             <i className="fas fa-eye"></i>
                           </Link>
-                          <button className="action-btn edit-btn" data-tooltip="Edit">
+                          <button 
+                            className="text-blue-600 hover:text-blue-900 mr-3"
+                            title="Edit"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditSubject(subject);
+                            }}
+                          >
                             <i className="fas fa-edit"></i>
                           </button>
                           <button className="action-btn delete-btn" data-tooltip="Delete">

@@ -73,6 +73,107 @@ exports.createStudent = async (req, res) => {
   }
 };
 
+// @desc    Update a student
+// @route   PUT /api/students/:id
+// @access  Private/Admin
+exports.updateStudent = async (req, res) => {
+  try {
+    const {
+      name,
+      email,
+      classId,
+      gender,
+      phone,
+      status,
+      fatherName,
+      motherName,
+      address
+    } = req.body;
+
+    // Find the student
+    const student = await Student.findById(req.params.id);
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student not found'
+      });
+    }
+
+    // Check if email is being changed and if it's already taken
+    if (email && email !== student.email) {
+      const emailExists = await Student.findOne({ email });
+      if (emailExists) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email already in use by another student'
+        });
+      }
+    }
+
+    // Check if class is being changed and if it exists
+    let oldClassId = student.class;
+    if (classId && classId !== oldClassId.toString()) {
+      const classExists = await Class.findById(classId);
+      if (!classExists) {
+        return res.status(404).json({
+          success: false,
+          message: 'Class not found'
+        });
+      }
+    }
+
+    // Update student
+    const updateData = {
+      name: name || student.name,
+      email: email || student.email,
+      class: classId || student.class,
+      gender: gender || student.gender,
+      phone: phone || student.phone,
+      status: status || student.status,
+      fatherName: fatherName || student.fatherName,
+      motherName: motherName || student.motherName,
+      address: address || student.address
+    };
+
+    const updatedStudent = await Student.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true, runValidators: true }
+    )
+    .populate('class', 'name classId')
+    .select('-__v');
+
+    // If class was changed, update the class's students array
+    if (classId && classId !== oldClassId.toString()) {
+      // Remove from old class
+      await Class.findByIdAndUpdate(
+        oldClassId,
+        { $pull: { students: student._id } },
+        { new: true }
+      );
+
+      // Add to new class
+      await Class.findByIdAndUpdate(
+        classId,
+        { $addToSet: { students: student._id } },
+        { new: true }
+      );
+    }
+
+    res.status(200).json({
+      success: true,
+      data: updatedStudent
+    });
+  } catch (error) {
+    console.error('Error in updateStudent:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+};
+
 // @desc    Get student by ID
 // @route   GET /api/students/:id
 // @access  Private/Admin

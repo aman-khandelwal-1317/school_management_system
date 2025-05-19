@@ -108,6 +108,78 @@ exports.getAllClasses = async (req, res) => {
   }
 };
 
+// @desc    Update a class
+// @route   PUT /api/classes/:id
+// @access  Private/Admin
+exports.updateClass = async (req, res) => {
+  try {
+    const { name, classTeacher, roomNo, status } = req.body;
+    const classId = req.params.id;
+
+    // Find the class
+    const existingClass = await Class.findById(classId);
+    if (!existingClass) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Class not found' 
+      });
+    }
+
+    // Check if class teacher exists if being updated
+    if (classTeacher && classTeacher !== existingClass.classTeacher?.toString()) {
+      const teacherExists = await Teacher.findById(classTeacher);
+      if (!teacherExists) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Class teacher not found' 
+        });
+      }
+    }
+
+    // Prepare update data
+    const updateData = {
+      name: name || existingClass.name,
+      roomNo: roomNo || existingClass.roomNo,
+      status: status || existingClass.status,
+      classTeacher: classTeacher || existingClass.classTeacher
+    };
+
+    // Update the class
+    const updatedClass = await Class.findByIdAndUpdate(
+      classId,
+      updateData,
+      { new: true, runValidators: true }
+    )
+    .populate({
+      path: 'classTeacher',
+      select: 'name teacherId email'
+    })
+    .populate({
+      path: 'students',
+      select: 'studentId name email phone status',
+      options: { sort: { name: 1 } }
+    })
+    .populate({
+      path: 'subjects',
+      select: 'subjectCode name type status',
+      options: { sort: { name: 1 } }
+    })
+    .select('-__v');
+
+    res.status(200).json({
+      success: true,
+      data: updatedClass
+    });
+  } catch (error) {
+    console.error('Error in updateClass:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server error', 
+      error: error.message 
+    });
+  }
+};
+
 // @desc    Delete a class
 // @route   DELETE /api/classes/:id
 // @access  Private/Admin

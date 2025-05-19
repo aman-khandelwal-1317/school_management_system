@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import apiService from '@/services/api';
@@ -32,16 +32,118 @@ interface Subject {
 
 export default function SubjectsPage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [filteredSubjects, setFilteredSubjects] = useState<Subject[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
+  const [uniqueDepartments, setUniqueDepartments] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [filters, setFilters] = useState({
+    search: '',
+    department: 'All Departments',
+    type: 'All Types',
+    class: 'All Classes',
+    status: 'All Statuses'
+  });
   const [stats, setStats] = useState({
     totalSubjects: 0,
     theorySubjects: 0,
     practicalSubjects: 0,
     avgStudentsPerSubject: 0
   });
+  
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  
+  // Custom debounce hook
+  const useDebounce = (value: string, delay: number) => {
+    const [debouncedValue, setDebouncedValue] = useState(value);
+    
+    useEffect(() => {
+      const handler = setTimeout(() => {
+        setDebouncedValue(value);
+      }, delay);
+      
+      return () => {
+        clearTimeout(handler);
+      };
+    }, [value, delay]);
+    
+    return debouncedValue;
+  };
+  
+  const debouncedSearch = useDebounce(filters.search, 300);
+  
+  // Apply filters when filters or subjects change
+  const applyFilters = useCallback(() => {
+    let result = [...subjects];
+
+    // Apply search filter
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      result = result.filter(subject => 
+        subject.name.toLowerCase().includes(searchLower) ||
+        subject.subjectCode.toLowerCase().includes(searchLower) ||
+        subject.department?.toLowerCase().includes(searchLower) ||
+        subject.class?.name.toLowerCase().includes(searchLower) ||
+        subject.teacher?.name.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Apply department filter
+    if (filters.department && filters.department !== 'All Departments') {
+      result = result.filter(subject => subject.department === filters.department);
+    }
+
+    // Apply type filter
+    if (filters.type && filters.type !== 'All Types') {
+      result = result.filter(subject => subject.type.toLowerCase() === filters.type.toLowerCase());
+    }
+
+    // Apply class filter
+    if (filters.class && filters.class !== 'All Classes') {
+      result = result.filter(subject => subject.class?._id === filters.class);
+    }
+
+    // Apply status filter
+    if (filters.status && filters.status !== 'All Statuses') {
+      result = result.filter(subject => subject.status === filters.status.toLowerCase());
+    }
+
+    setFilteredSubjects(result);
+  }, [filters, subjects]);
+
+  // Handle search input change
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFilters(prev => ({
+      ...prev,
+      search: e.target.value
+    }));
+  };
+
+  // Handle filter changes
+  const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Clear search input
+  const clearSearch = () => {
+    setFilters(prev => ({
+      ...prev,
+      search: ''
+    }));
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  };
+
+  // Apply filters when debounced search or subjects change
+  useEffect(() => {
+    applyFilters();
+  }, [applyFilters, debouncedSearch]);
   
   useEffect(() => {
     const fetchData = async () => {
@@ -52,6 +154,15 @@ export default function SubjectsPage() {
         const subjectsResponse = await apiService.subjects.getAll();
         if (subjectsResponse.success && subjectsResponse.data) {
           setSubjects(subjectsResponse.data);
+          setFilteredSubjects(subjectsResponse.data);
+          
+          // Extract unique departments
+          const departments = ['All Departments', ...new Set(
+            subjectsResponse.data
+              .map((subject: Subject) => subject.department)
+              .filter(Boolean)
+          )] as string[];
+          setUniqueDepartments(departments);
           
           // Calculate stats
           const theorySubjects = subjectsResponse.data.filter((subject: Subject) => subject.type === 'Theory').length;
@@ -173,40 +284,95 @@ export default function SubjectsPage() {
         </div>
       </div>
       
-      {/* Filters */}
+      {/* Search and Filters */}
       <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+        {/* Search Bar */}
+        <div className="relative mb-4">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <i className="fas fa-search text-gray-400"></i>
+          </div>
+          <input
+            type="text"
+            className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            placeholder="Search subjects by name, code, or teacher..."
+            value={filters.search}
+            onChange={handleSearchChange}
+            ref={searchInputRef}
+          />
+          {filters.search && (
+            <button
+              onClick={clearSearch}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+            >
+              <i className="fas fa-times"></i>
+            </button>
+          )}
+        </div>
+        
         <div className="flex flex-wrap gap-4">
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-            <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-              <option value="">All Departments</option>
-              <option value="science">Science</option>
-              <option value="math">Mathematics</option>
-              <option value="english">English</option>
-              <option value="social">Social Studies</option>
+            <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+            <select
+              id="department"
+              name="department"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              value={filters.department}
+              onChange={handleFilterChange}
+            >
+              {uniqueDepartments.map((dept) => (
+                <option key={dept} value={dept}>
+                  {dept}
+                </option>
+              ))}
             </select>
           </div>
+          
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Subject Type</label>
-            <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-              <option value="">All Types</option>
-              <option value="theory">Theory</option>
-              <option value="practical">Practical</option>
+            <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">Subject Type</label>
+            <select
+              id="type"
+              name="type"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              value={filters.type}
+              onChange={handleFilterChange}
+            >
+              <option value="All Types">All Types</option>
+              <option value="Theory">Theory</option>
+              <option value="Practical">Practical</option>
             </select>
           </div>
+          
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
-            <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-              <option value="">All Classes</option>
-              <option value="10">Class 10</option>
-              <option value="9">Class 9</option>
-              <option value="8">Class 8</option>
+            <label htmlFor="class" className="block text-sm font-medium text-gray-700 mb-1">Class</label>
+            <select
+              id="class"
+              name="class"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              value={filters.class}
+              onChange={handleFilterChange}
+            >
+              <option value="All Classes">All Classes</option>
+              {classes.map((cls) => (
+                <option key={cls._id} value={cls._id}>
+                  {cls.name}
+                </option>
+              ))}
             </select>
           </div>
-          <div className="flex-1 min-w-[200px] self-end">
-            <button className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg w-full">
-              Apply Filters
-            </button>
+          
+          <div className="flex-1 min-w-[200px]">
+            <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <select
+              id="status"
+              name="status"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              value={filters.status}
+              onChange={handleFilterChange}
+            >
+              <option value="All Statuses">All Statuses</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
           </div>
         </div>
       </div>
@@ -268,14 +434,14 @@ export default function SubjectsPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {subjects.length === 0 ? (
+                {filteredSubjects.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
                       No subjects found
                     </td>
                   </tr>
                 ) : (
-                  subjects.map((subject) => (
+                  filteredSubjects.map((subject) => (
                     <tr key={subject._id} className="table-row-hover">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{subject.subjectCode}</div>
@@ -347,7 +513,8 @@ export default function SubjectsPage() {
             <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm text-gray-700">
-                  Showing <span className="font-medium">1</span> to <span className="font-medium">{subjects.length < 5 ? subjects.length : 5}</span> of <span className="font-medium">{subjects.length}</span> results
+                  Showing <span className="font-medium">1</span> to <span className="font-medium">{Math.min(filteredSubjects.length, 5)}</span> of <span className="font-medium">{filteredSubjects.length}</span> {filteredSubjects.length === 1 ? 'result' : 'results'}
+                  {filters.search || filters.department !== 'All Departments' || filters.type !== 'All Types' || filters.class !== 'All Classes' || filters.status !== 'All Statuses' ? ' (filtered)' : ''}
                 </p>
               </div>
               <div>

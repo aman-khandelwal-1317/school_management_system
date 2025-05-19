@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -28,11 +28,104 @@ interface Student {
 
 export default function StudentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
+  const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [filters, setFilters] = useState({
+    search: '',
+    class: '',
+    status: '',
+    gender: ''
+  });
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // Custom debounce hook
+  const useDebounce = (value: string, delay: number) => {
+    const [debouncedValue, setDebouncedValue] = useState(value);
+  
+    useEffect(() => {
+      const handler = setTimeout(() => {
+        setDebouncedValue(value);
+      }, delay);
+  
+      return () => {
+        clearTimeout(handler);
+      };
+    }, [value, delay]);
+  
+    return debouncedValue;
+  };
+
+  const debouncedSearch = useDebounce(filters.search, 300);
+
+  // Apply filters whenever filters or students change
+  useEffect(() => {
+    const applyFilters = () => {
+      let result = [...students];
+
+      // Apply search filter
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        result = result.filter(
+          student => 
+            student.name.toLowerCase().includes(searchLower) ||
+            student.studentId.toLowerCase().includes(searchLower) ||
+            student.email.toLowerCase().includes(searchLower)
+        );
+      }
+
+      // Apply class filter
+      if (filters.class) {
+        result = result.filter(student => student.class?._id === filters.class);
+      }
+
+      // Apply status filter
+      if (filters.status) {
+        result = result.filter(student => student.status === filters.status);
+      }
+
+      // Apply gender filter
+      if (filters.gender) {
+        result = result.filter(student => student.gender.toLowerCase() === filters.gender.toLowerCase());
+      }
+
+      setFilteredStudents(result);
+    };
+
+    applyFilters();
+  }, [filters, students]);
+
+  // Handle search input change with debouncing
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFilters(prev => ({
+      ...prev,
+      search: e.target.value
+    }));
+  };
+
+  // Handle filter change
+  const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Clear search input
+  const clearSearch = () => {
+    setFilters(prev => ({
+      ...prev,
+      search: ''
+    }));
+    if (searchInputRef.current) {
+      searchInputRef.current.value = '';
+    }
+  };
+
+  // Fetch data on component mount
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -42,13 +135,13 @@ export default function StudentsPage() {
         const studentsResponse = await apiService.students.getAll();
         if (studentsResponse.success && studentsResponse.data) {
           setStudents(studentsResponse.data);
+          setFilteredStudents(studentsResponse.data);
         } else {
           setError(studentsResponse.error || studentsResponse.message || 'Failed to fetch students');
         }
         
         // Fetch classes for the form dropdown
         const classesResponse = await apiService.classes.getAll();
-        console.log(classesResponse);
         if (classesResponse.success && classesResponse.data) {
           setClasses(classesResponse.data);
         }
@@ -69,6 +162,7 @@ export default function StudentsPage() {
       const response = await apiService.students.getAll();
       if (response.success && response.data) {
         setStudents(response.data);
+        setFilteredStudents(response.data);
       }
       setIsModalOpen(false);
     } catch (err) {
@@ -90,37 +184,74 @@ export default function StudentsPage() {
       
       {/* Filters and Search */}
       <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-        <div className="flex flex-wrap gap-4">
+        <div className="flex flex-wrap gap-4 items-end">
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
-            <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+            <div className="relative">
+              <input
+                type="text"
+                id="search"
+                ref={searchInputRef}
+                placeholder="Search by name, ID, or email..."
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                onChange={handleSearchChange}
+                value={filters.search}
+              />
+              {filters.search && (
+                <button
+                  onClick={clearSearch}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="flex-1 min-w-[200px]">
+            <label htmlFor="class-filter" className="block text-sm font-medium text-gray-700 mb-1">Class</label>
+            <select 
+              id="class-filter"
+              name="class"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              onChange={handleFilterChange}
+              value={filters.class}
+            >
               <option value="">All Classes</option>
-              <option value="10A">Class 10A</option>
-              <option value="10B">Class 10B</option>
-              <option value="9A">Class 9A</option>
-              <option value="9B">Class 9B</option>
+              {classes.map(cls => (
+                <option key={cls._id} value={cls._id}>
+                  {cls.name} ({cls.classId})
+                </option>
+              ))}
             </select>
           </div>
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <select 
+              id="status-filter"
+              name="status"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              onChange={handleFilterChange}
+              value={filters.status}
+            >
               <option value="">All Status</option>
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
             </select>
           </div>
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
-            <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <label htmlFor="gender-filter" className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+            <select 
+              id="gender-filter"
+              name="gender"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              onChange={handleFilterChange}
+              value={filters.gender}
+            >
               <option value="">All Genders</option>
               <option value="male">Male</option>
               <option value="female">Female</option>
+              <option value="other">Other</option>
             </select>
-          </div>
-          <div className="flex-1 min-w-[200px] self-end">
-            <button className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg w-full">
-              Apply Filters
-            </button>
           </div>
         </div>
       </div>
@@ -182,14 +313,18 @@ export default function StudentsPage() {
                     <p>{error}</p>
                   </td>
                 </tr>
-              ) : students.length === 0 ? (
+              ) : filteredStudents.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
-                    No students found
+                    {Object.values(filters).some(Boolean) ? (
+                      <>
+                        No students match the selected filters. Try adjusting your filters.
+                      </>
+                    ) : 'No students found'}
                   </td>
                 </tr>
               ) : (
-                students.map((student) => (
+                filteredStudents.map((student) => (
                   <tr key={student._id} className="table-row-hover">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{student.studentId}</div>
@@ -259,7 +394,14 @@ export default function StudentsPage() {
             <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm text-gray-700">
-                  Showing <span className="font-medium">1</span> to <span className="font-medium">{students.length < 5 ? students.length : 5}</span> of <span className="font-medium">{students.length}</span> results
+                  Showing <span className="font-medium">1</span> to <span className="font-medium">
+                    {filteredStudents.length < 10 ? filteredStudents.length : 10}
+                  </span> of <span className="font-medium">{filteredStudents.length}</span> results
+                  {Object.values(filters).some(Boolean) && (
+                    <span className="ml-2 text-xs text-gray-500">
+                      (filtered from {students.length} total)
+                    </span>
+                  )}
                 </p>
               </div>
               <div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import apiService from '@/services/api';
@@ -25,18 +25,129 @@ interface Teacher {
   createdAt: string;
 }
 
+// Custom hook for debouncing
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 export default function TeachersPage() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [filteredTeachers, setFilteredTeachers] = useState<Teacher[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  // Extract unique departments from teachers data
+  const [departments, setDepartments] = useState<string[]>(['All Departments']);
+  const [filters, setFilters] = useState({
+    search: '',
+    department: '',
+    status: '',
+    employmentType: ''
+  });
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [stats, setStats] = useState({
     totalTeachers: 0,
     activeTeachers: 0,
     inactiveTeachers: 0,
     newTeachers: 0
   });
+  
+  // Debounce the search input
+  const debouncedSearch = useDebounce(filters.search, 300);
+  
+  // Update departments when teachers data is loaded
+  useEffect(() => {
+    if (teachers.length > 0) {
+      const uniqueDepartments = ['All Departments', ...new Set(teachers.map(teacher => teacher.department).filter(Boolean))];
+      setDepartments(uniqueDepartments);
+    }
+  }, [teachers]);
+  
+  // Apply filters when filters change
+  useEffect(() => {
+    applyFilters();
+  }, [debouncedSearch, filters.department, filters.status, filters.employmentType]);
+  
+  // Handle search input change with debouncing
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFilters(prev => ({
+      ...prev,
+      search: e.target.value
+    }));
+  };
+  
+  // Handle filter changes
+  const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+  
+  // Clear search input
+  const clearSearch = () => {
+    setFilters(prev => ({
+      ...prev,
+      search: ''
+    }));
+    if (searchInputRef.current) {
+      searchInputRef.current.value = '';
+    }
+  };
+  
+  // Apply all filters
+  const applyFilters = () => {
+    let result = [...teachers];
+
+    // Apply search filter
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      result = result.filter(
+        teacher => 
+          teacher.name.toLowerCase().includes(searchLower) ||
+          teacher.teacherId.toLowerCase().includes(searchLower) ||
+          teacher.email.toLowerCase().includes(searchLower) ||
+          teacher.department.toLowerCase().includes(searchLower) ||
+          teacher.subjects.some(subject => 
+            subject.name.toLowerCase().includes(searchLower) ||
+            subject.subjectCode.toLowerCase().includes(searchLower)
+          )
+      );
+    }
+
+
+    // Apply department filter
+    if (filters.department && filters.department !== 'All Departments') {
+      result = result.filter(teacher => teacher.department.toLowerCase() === filters.department.toLowerCase());
+    }
+
+    // Apply status filter
+    if (filters.status) {
+      result = result.filter(teacher => teacher.status === filters.status);
+    }
+
+    // Apply employment type filter (note: this is a placeholder as the Teacher interface doesn't have employmentType yet)
+    // if (filters.employmentType) {
+    //   result = result.filter(teacher => teacher.employmentType === filters.employmentType);
+    // }
+
+
+    setFilteredTeachers(result);
+  };
   
   useEffect(() => {
     const fetchData = async () => {
@@ -47,6 +158,7 @@ export default function TeachersPage() {
         const teachersResponse = await apiService.teachers.getAll();
         if (teachersResponse.success && teachersResponse.data) {
           setTeachers(teachersResponse.data);
+          setFilteredTeachers(teachersResponse.data);
           
           // Calculate stats
           const activeTeachers = teachersResponse.data.filter((teacher: Teacher) => teacher.status === 'active').length;
@@ -92,6 +204,7 @@ export default function TeachersPage() {
       const response = await apiService.teachers.getAll();
       if (response.success && response.data) {
         setTeachers(response.data);
+        setFilteredTeachers(response.data);
         
         // Recalculate stats
         const activeTeachers = response.data.filter((teacher: Teacher) => teacher.status === 'active').length;
@@ -111,6 +224,9 @@ export default function TeachersPage() {
           inactiveTeachers,
           newTeachers
         });
+        
+        // Reapply filters with the new data
+        applyFilters();
       }
       setIsModalOpen(false);
     } catch (err) {
@@ -180,40 +296,77 @@ export default function TeachersPage() {
         </div>
       </div>
       
-      {/* Filters */}
+      {/* Filters and Search */}
       <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-        <div className="flex flex-wrap gap-4">
+        <div className="flex flex-wrap gap-4 items-end">
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-            <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-              <option value="">All Departments</option>
-              <option value="science">Science</option>
-              <option value="math">Mathematics</option>
-              <option value="english">English</option>
-              <option value="social">Social Studies</option>
+            <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+            <div className="relative">
+              <input
+                type="text"
+                id="search"
+                ref={searchInputRef}
+                placeholder="Search by name, ID, email, or department..."
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                onChange={handleSearchChange}
+                value={filters.search}
+              />
+              {filters.search && (
+                <button
+                  onClick={clearSearch}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="flex-1 min-w-[200px]">
+            <label htmlFor="department-filter" className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+            <select 
+              id="department-filter"
+              name="department"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              onChange={handleFilterChange}
+              value={filters.department}
+            >
+              {departments.map((dept) => (
+                <option key={dept} value={dept}>
+                  {dept}
+                </option>
+              ))}
             </select>
           </div>
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <select 
+              id="status-filter"
+              name="status"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              onChange={handleFilterChange}
+              value={filters.status}
+            >
               <option value="">All Status</option>
               <option value="active">Active</option>
-              <option value="inactive">On Leave</option>
+              <option value="inactive">Inactive</option>
             </select>
           </div>
+          {/* Commenting out employment type as it's not in the Teacher interface yet
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Employment Type</label>
-            <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <label htmlFor="employment-type-filter" className="block text-sm font-medium text-gray-700 mb-1">Employment Type</label>
+            <select 
+              id="employment-type-filter"
+              name="employmentType"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              onChange={handleFilterChange}
+              value={filters.employmentType}
+            >
               <option value="">All Types</option>
               <option value="fulltime">Full-time</option>
               <option value="parttime">Part-time</option>
             </select>
           </div>
-          <div className="flex-1 min-w-[200px] self-end">
-            <button className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg w-full">
-              Apply Filters
-            </button>
-          </div>
+          */}
         </div>
       </div>
       
@@ -271,14 +424,16 @@ export default function TeachersPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {teachers.length === 0 ? (
+                {filteredTeachers.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
-                      No teachers found
+                      {Object.values(filters).some(Boolean) ? (
+                        <></>
+                      ) : 'No teachers found'}
                     </td>
                   </tr>
                 ) : (
-                  teachers.map((teacher) => (
+                  filteredTeachers.map((teacher) => (
                     <tr key={teacher._id} className="table-row-hover">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{teacher.teacherId}</div>
@@ -360,7 +515,7 @@ export default function TeachersPage() {
             <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm text-gray-700">
-                  Showing <span className="font-medium">1</span> to <span className="font-medium">{teachers.length < 5 ? teachers.length : 5}</span> of <span className="font-medium">{teachers.length}</span> results
+                  Showing <span className="font-medium">1</span> to <span className="font-medium">{Math.min(filteredTeachers.length, 5)}</span> of <span className="font-medium">{filteredTeachers.length}</span> results
                 </p>
               </div>
               <div>

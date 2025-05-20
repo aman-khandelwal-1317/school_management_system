@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import apiService from '@/services/api';
@@ -124,7 +124,8 @@ const AttendanceCalendar = ({ records }: { records: AttendanceRecord[] }) => {
   );
 };
 
-export default function StudentDetails({ params }: { params: { id: string } }) {
+export default function StudentDetails({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params); // ✅ unwraps the Promise
   const [student, setStudent] = useState<Student | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -166,7 +167,7 @@ export default function StudentDetails({ params }: { params: { id: string } }) {
     const fetchStudent = async () => {
       try {
         setLoading(true);
-        const response = await apiService.students.getById(params.id);
+        const response = await apiService.students.getById(id);
         
         if (response.success && response.data) {
           setStudent(response.data);
@@ -185,7 +186,7 @@ export default function StudentDetails({ params }: { params: { id: string } }) {
     };
 
     fetchStudent();
-  }, [params.id]);
+  }, [id]);
 
   if (loading) {
     return (

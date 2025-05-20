@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -109,7 +109,8 @@ interface ApiResponse<T> {
   message?: string;
 }
 
-export default function ClassDetails({ params }: { params: { id: string } }) {
+export default function ClassDetails({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params); // ✅ unwraps the Promise
   const [classDetails, setClassDetails] = useState<ClassDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -120,7 +121,7 @@ export default function ClassDetails({ params }: { params: { id: string } }) {
       try {
         setLoading(true);
         // @ts-ignore - We'll handle the response structure
-        const response: ApiResponse<ClassDetails> = await apiService.classes.getById(params.id);
+        const response: ApiResponse<ClassDetails> = await apiService.classes.getById(id);
         
         if (response.success && response.data) {
           // Ensure arrays are always defined
@@ -142,7 +143,7 @@ export default function ClassDetails({ params }: { params: { id: string } }) {
     };
 
     fetchClassDetails();
-  }, [params.id]);
+  }, [id]);
 
   if (loading) {
     return (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -88,7 +88,8 @@ interface TeacherDetails {
   subjects: Subject[];
 }
 
-export default function TeacherDetails({ params }: { params: { id: string } }) {
+export default function TeacherDetails({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params); // ✅ unwraps the Promise
   const [teacher, setTeacher] = useState<TeacherDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -98,7 +99,7 @@ export default function TeacherDetails({ params }: { params: { id: string } }) {
     const fetchTeacherDetails = async () => {
       try {
         setLoading(true);
-        const response = await apiService.teachers.getById(params.id);
+        const response = await apiService.teachers.getById(id);
         
         if (response.success && response.data) {
           setTeacher(response.data);
@@ -114,7 +115,7 @@ export default function TeacherDetails({ params }: { params: { id: string } }) {
     };
 
     fetchTeacherDetails();
-  }, [params.id]);
+  }, [id]);
 
   const getInitials = (name: string) => {
     return name

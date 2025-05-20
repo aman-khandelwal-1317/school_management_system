@@ -1,11 +1,12 @@
+import Cookies from 'js-cookie';
+
 /**
  * API Service for SMS Dashboard
  * Centralizes all API calls and handles authentication
  */
 
 // Base API URL - should be stored in .env file in production
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-const API_TOKEN = process.env.NEXT_PUBLIC_API_TOKEN || 'your-default-token';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 // Request timeout in milliseconds
 const TIMEOUT = 30000;
@@ -42,14 +43,11 @@ const timeoutPromise = (ms: number): Promise<never> => {
 };
 
 /**
- * Get authentication token - either from localStorage or fallback to env variable
+ * Get authentication token from cookies
  */
-const getAuthToken = (): string => {
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('authToken');
-    if (token) return token;
-  }
-  return API_TOKEN;
+const getAuthToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  return Cookies.get('authToken') || null;
 };
 
 /**
@@ -71,9 +69,10 @@ async function apiRequest<T>(
       ...customHeaders,
     };
     
-    // Add auth token if needed
-    if (includeAuth) {
-      headers['Authorization'] = `Bearer ${getAuthToken()}`;
+    // Add auth token if needed and available
+    const authToken = getAuthToken();
+    if (includeAuth && authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
     }
     
     // Prepare request options

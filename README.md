@@ -40,6 +40,7 @@ A school management system built with Next.js, Node.js, Express, and MongoDB. Th
   - Responsive design
   - Full-screen mode
   - User-friendly interface
+  - Rate limiting for API requests
 
 ## Tech Stack
 

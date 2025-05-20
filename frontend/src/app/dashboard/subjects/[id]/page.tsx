@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -90,7 +90,8 @@ interface SubjectDetails {
   teacher: TeacherInfo;
 }
 
-export default function SubjectDetails({ params }: { params: { id: string } }) {
+export default function SubjectDetails({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params); // ✅ unwraps the Promise
   const [subject, setSubject] = useState<SubjectDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -100,7 +101,7 @@ export default function SubjectDetails({ params }: { params: { id: string } }) {
     const fetchSubjectDetails = async () => {
       try {
         setLoading(true);
-        const response = await apiService.subjects.getById(params.id);
+        const response = await apiService.subjects.getById(id);
         
         if (response.success && response.data) {
           setSubject(response.data);
@@ -116,7 +117,7 @@ export default function SubjectDetails({ params }: { params: { id: string } }) {
     };
 
     fetchSubjectDetails();
-  }, [params.id]);
+  }, [id]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {

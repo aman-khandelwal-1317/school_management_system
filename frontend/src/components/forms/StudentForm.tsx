@@ -32,7 +32,6 @@ const StudentForm = ({ classes, onSuccess, onCancel }: StudentFormProps) => {
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
   
-  console.log(classes);
   const { 
     register, 
     handleSubmit, 

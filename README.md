@@ -42,6 +42,26 @@ A school management system built with Next.js, Node.js, Express, and MongoDB. Th
   - User-friendly interface
   - Rate limiting for API requests
 
+## Screenshots
+
+### Dashboard
+![Dashboard](./frontend/public/images/screenshots/dashboard.png)
+
+### Student Management
+![Student Management](./frontend/public/images/screenshots/student.png)
+
+### Class Management
+![Class Management](./frontend/public/images/screenshots/class.png)
+
+### Subject Management
+![Subject Management](./frontend/public/images/screenshots/subject.png)
+
+### Teacher Management
+![Teacher Management](./frontend/public/images/screenshots/teacher.png)
+
+### Student Registration Form
+![Student Registration](./frontend/public/images/screenshots/student-add.png)
+
 ## Tech Stack
 
 - **Frontend**

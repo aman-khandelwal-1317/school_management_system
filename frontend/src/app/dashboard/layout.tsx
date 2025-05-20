@@ -24,14 +24,20 @@ export default function DashboardLayout({
         strategy="afterInteractive"
       />
       
-      {/* Sidebar for desktop */}
-      <Sidebar />
+      {/* Sidebar - Hidden on mobile by default, shown when toggled */}
+      <div className="hidden md:block">
+        <Sidebar />
+      </div>
       
-      {/* Mobile sidebar */}
+      {/* Mobile sidebar overlay and sidebar */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
-          <div className="absolute inset-0 bg-gray-600 opacity-75" onClick={toggleSidebar}></div>
-          <div className="fixed inset-y-0 left-0 flex flex-col z-50 w-64 bg-indigo-800">
+          <div 
+            className="absolute inset-0 bg-gray-600 opacity-75" 
+            onClick={toggleSidebar}
+            aria-hidden="true"
+          ></div>
+          <div className="fixed inset-y-0 left-0 flex flex-col z-50 w-64">
             <Sidebar />
           </div>
         </div>

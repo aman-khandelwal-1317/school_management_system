@@ -1,7 +1,9 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import Cookies from 'js-cookie';
+import apiService from '@/services/api';
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('');
@@ -10,22 +12,43 @@ export default function AdminLogin() {
   const [error, setError] = useState('');
   const router = useRouter();
 
+  // Check if user is already logged in
+  useEffect(() => {
+    const token = Cookies.get('authToken');
+    if (token) {
+      router.push('/dashboard');
+    }
+  }, [router]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
     
-    // In a real application, this would make an API call to validate credentials
-    // For demo purposes, using a simple validation
-    if (email === 'admin@school.com' && password === 'admin123') {
-      // Simulate API call latency
-      setTimeout(() => {
-        // You would normally store a token in localStorage or a secure cookie
-        localStorage.setItem('adminAuthenticated', 'true');
+    try {
+      const response = await apiService.auth.login(email, password);
+      
+      if (response.success && response.data) {
+        // Store the token in a cookie
+        Cookies.set('authToken', response.data.token, { 
+          expires: 30, // 30 days
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict'
+        });
+        
+        // Store user data in localStorage
+        const { token, ...userData } = response.data;
+        localStorage.setItem('user', JSON.stringify(userData));
+        
+        // Redirect to dashboard
         router.push('/dashboard');
-      }, 1000);
-    } else {
-      setError('Invalid email or password');
+      } else {
+        setError(response.error || 'Invalid email or password');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      setError('An error occurred during login. Please try again.');
+    } finally {
       setIsLoading(false);
     }
   };
@@ -70,7 +93,7 @@ export default function AdminLogin() {
                 type="email"
                 autoComplete="email"
                 required
-                value={email}
+                value={email.toLowerCase()}
                 onChange={(e) => setEmail(e.target.value)}
                 className="appearance-none rounded-lg relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                 placeholder="admin@school.com"
@@ -117,7 +140,16 @@ export default function AdminLogin() {
           </div>
         </form>
         
-        <div className="mt-6 text-center">
+        {/* Demo Credentials */}
+        <div className="mt-6 p-4 bg-indigo-50 rounded-lg border border-indigo-100">
+          <h3 className="text-sm font-medium text-indigo-800 mb-2">Demo Credentials</h3>
+          <div className="text-xs text-indigo-700 space-y-1">
+            <p>Email: <span className="font-mono">admin@sms.com</span></p>
+            <p>Password: <span className="font-mono">123456</span></p>
+          </div>
+        </div>
+        
+        <div className="mt-4 text-center">
           <div className="text-xs text-gray-500">
             Protected Area • {new Date().getFullYear()} • SMS Dashboard
           </div>

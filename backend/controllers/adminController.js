@@ -64,18 +64,29 @@ exports.loginAdmin = async (req, res) => {
     const isMatch = await admin.comparePassword(password);
 
     if (isMatch) {
-      res.json({
-        _id: admin._id,
-        name: admin.name,
-        email: admin.email,
-        role: admin.role,
-        token: generateToken(admin._id),
+      res.status(200).json({
+        success: true,
+        message: 'Admin logged in successfully',
+        data: {
+          _id: admin._id,
+          name: admin.name,
+          email: admin.email,
+          role: admin.role,
+          token: generateToken(admin._id),
+        },
       });
     } else {
-      res.status(401).json({ message: 'Invalid email or password' });
+      res.status(401).json({
+        success: false,
+        error: 'Invalid email or password',
+      });
     }
   } catch (error) {
     console.error('Error in loginAdmin:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message,
+    });
   }
 };

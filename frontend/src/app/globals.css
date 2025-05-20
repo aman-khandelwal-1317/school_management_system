@@ -49,6 +49,10 @@
   color: #10b981;
 }
 
+button:hover {
+  cursor: pointer;
+}
+
 .edit-btn:hover {
   background-color: #d1fae5;
 }

@@ -8,6 +8,18 @@ interface TopbarProps {
 }
 
 const Topbar: FC<TopbarProps> = ({ toggleSidebar }) => {
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`);
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  };
+
   return (
     <header className="bg-white shadow-md">
       <div className="flex items-center justify-between px-6 py-3">
@@ -15,10 +27,11 @@ const Topbar: FC<TopbarProps> = ({ toggleSidebar }) => {
           id="mobile-menu-button" 
           onClick={toggleSidebar} 
           className="md:hidden text-gray-500 focus:outline-none"
+          aria-label="Toggle menu"
         >
           <i className="fas fa-bars"></i>
         </button>
-        <div className="flex items-center">
+        <div className="hidden md:flex items-center">
           <div className="relative">
             <input 
               type="text" 
@@ -30,25 +43,20 @@ const Topbar: FC<TopbarProps> = ({ toggleSidebar }) => {
             </button>
           </div>
         </div>
-        <div className="flex items-center">
-          <div className="relative">
-            <button className="flex items-center text-gray-500 focus:outline-none mr-4">
-              <i className="fas fa-bell text-xl"></i>
-              <span className="absolute top-0 right-0 h-4 w-4 bg-red-500 rounded-full text-xs flex items-center justify-center text-white">3</span>
-            </button>
-          </div>
-          <div className="relative">
-            <button className="flex items-center text-sm focus:outline-none">
-              <Image 
-                className="h-8 w-8 rounded-full object-cover" 
-                src="https://ui-avatars.com/api/?name=Admin+User" 
-                alt="Profile"
-                width={32}
-                height={32}
-              />
-              <span className="ml-2 mr-1 text-gray-700">Admin User</span>
-              <i className="fas fa-chevron-down text-xs text-gray-500"></i>
-            </button>
+        <div className="flex items-center space-x-4">
+          <button 
+            onClick={toggleFullscreen}
+            className="text-gray-500 hover:text-gray-700 focus:outline-none"
+            aria-label="Toggle fullscreen"
+            title="Toggle fullscreen"
+          >
+            <i className="fas fa-expand text-xl"></i>
+          </button>
+          <div className="flex items-center space-x-2">
+            <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-medium">
+              AU
+            </div>
+            <span className="text-sm text-gray-700">Admin User</span>
           </div>
         </div>
       </div>
